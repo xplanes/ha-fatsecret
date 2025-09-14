@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Deploy fatsecret",
+      "type": "shell",
+      "command": "sh",
+      "args": [
+        "-c",
+        "mkdir -p /workspaces/core/config/custom_components/fatsecret && cp -r /workspaces/ha-fatsecret/custom_components/fatsecret /workspaces/core/config/custom_components"],
+      "group": "build",
+      "detail": "Deploy fatsecret to core configuration",
+    }
+  ]
+}
