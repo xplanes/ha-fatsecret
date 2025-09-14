@@ -1,0 +1,12 @@
+{
+  "domain": "fatsecret",
+  "name": "FatSecret",
+  "codeowners": ["@xplanes"],
+  "config_flow": true,
+  "dependencies": ["logbook"],
+  "documentation": "https://github.com/xplanes/ha-fatsecret",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/xplanes/ha-fatsecret/issues",
+  "requirements": [],
+  "version": "1.0.0"
+}
