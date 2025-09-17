@@ -1,15 +1,15 @@
 """Module for managing the FatSecret component."""
 
-import logging
-from datetime import datetime
-
-# FatSecret API
-import aiohttp
+import base64
 import hashlib
 import hmac
-import base64
+import logging
+import random
 import time
 import urllib.parse
+from datetime import datetime
+
+import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -17,7 +17,6 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 
 from .const import DOMAIN, SENSOR_TYPES
-
 from .FatSecretSensor import FatSecretSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,9 +84,9 @@ class FatSecretManager:
         for metric, entity in self.entities.items():
             entity.update_value(data.get(metric, 0))
 
-    async def fetch_fatsecret_data(self) -> dict:
-        """
-        Fetch latest FatSecret food entries and return summed metrics.
+    async def fetch_fatsecret_data2(self) -> dict:
+        """Fetch latest FatSecret food entries and return summed metrics.
+
         Returns a dict:
         calories, carbs, protein, fat, fiber, sugar
         """
@@ -102,9 +101,9 @@ class FatSecretManager:
             "sugar": 90,
         }
 
-    async def fetch_fatsecret_data2(self) -> dict:
-        """
-        Fetch latest FatSecret food entries and return summed metrics.
+    async def fetch_fatsecret_data(self) -> dict:
+        """Fetch latest FatSecret food entries and return summed metrics.
+
         Returns a dict:
         calories, carbs, protein, fat, fiber, sugar
         """
@@ -116,61 +115,55 @@ class FatSecretManager:
         token_secret = self.entry.data["token_secret"]
 
         url = "https://platform.fatsecret.com/rest/food-entries/v2"
+        query_params = {"format": "json"}  # API params
 
-        # For simplicity, we use query parameters for today
-        params = {
-            "method": "food_entries.get",
-            "max_results": 50,
-            "date": time.strftime("%Y-%m-%d"),
-            "format": "json",
-        }
-
-        # Generate OAuth1 signature (HMAC-SHA1)
+        # OAuth1 params
         oauth_params = {
             "oauth_consumer_key": consumer_key,
             "oauth_token": oauth_token,
-            "oauth_nonce": str(int(time.time() * 1000)),
+            "oauth_nonce": str(random.randint(0, 100000000)),
             "oauth_timestamp": str(int(time.time())),
             "oauth_signature_method": "HMAC-SHA1",
             "oauth_version": "1.0",
         }
 
-        all_params = {**params, **oauth_params}
-        sorted_params = "&".join(
-            f"{urllib.parse.quote(k)}={urllib.parse.quote(str(v))}"
-            for k, v in sorted(all_params.items())
+        # Merge API + OAuth params for signing
+        all_params = {**query_params, **oauth_params}
+        sorted_items = sorted(all_params.items())
+        encoded_params = "&".join(
+            f"{urllib.parse.quote(str(k), safe='')}={urllib.parse.quote(str(v), safe='')}"
+            for k, v in sorted_items
         )
-        base_string = (
-            f"GET&{urllib.parse.quote(url)}&{urllib.parse.quote(sorted_params)}"
-        )
-        signing_key = (
-            f"{urllib.parse.quote(consumer_secret)}&{urllib.parse.quote(token_secret)}"
-        )
+
+        # Signature base string
+        base_string = f"GET&{urllib.parse.quote(url, safe='')}&{urllib.parse.quote(encoded_params, safe='')}"
+        signing_key = f"{urllib.parse.quote(consumer_secret, safe='')}&{urllib.parse.quote(token_secret, safe='')}"
+
+        # Create signature
         signature = base64.b64encode(
             hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha1).digest()
         ).decode()
+
         oauth_params["oauth_signature"] = signature
 
-        # Construct Authorization header
+        # Build Authorization header
         auth_header = "OAuth " + ", ".join(
-            [f'{k}="{urllib.parse.quote(str(v))}"' for k, v in oauth_params.items()]
+            f'{k}="{urllib.parse.quote(str(v), safe="")}"'
+            for k, v in oauth_params.items()
         )
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
-                url, headers={"Authorization": auth_header}, params=params
-            ) as resp:
-                resp.raise_for_status()
-                data = await resp.json()
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(
+                url, headers={"Authorization": auth_header}, params=query_params
+            ) as resp,
+        ):
+            resp.raise_for_status()
+            data = await resp.json()
 
-        # Initialize sums
-        totals = {k: 0.0 for k in SENSOR_TYPES}
-
-        food_entries = data.get("food_entries", {}).get("food_entry", [])
-        if not isinstance(food_entries, list):
-            food_entries = [food_entries]
-
-        for entry in food_entries:
+        # Sum up metrics
+        totals = dict.fromkeys(SENSOR_TYPES, 0.0)
+        for entry in data.get("food_entries", {}).get("food_entry", []):
             totals["calories"] += float(entry.get("calories", 0))
             totals["carbs"] += float(entry.get("carbohydrate", 0))
             totals["protein"] += float(entry.get("protein", 0))
