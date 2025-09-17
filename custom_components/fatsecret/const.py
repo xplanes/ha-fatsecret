@@ -9,3 +9,9 @@ SENSOR_TYPES = {
     "fiber": "Fiber",
     "sugar": "Sugar",
 }
+
+
+CONF_CONSUMER_KEY = "consumer_key"
+CONF_CONSUMER_SECRET = "consumer_secret"
+CONF_TOKEN = "token"
+CONF_TOKEN_SECRET = "token_secret"

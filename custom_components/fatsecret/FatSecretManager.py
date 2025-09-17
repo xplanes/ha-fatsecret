@@ -16,7 +16,14 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 
-from .const import DOMAIN, SENSOR_TYPES
+from .const import (
+    DOMAIN,
+    SENSOR_TYPES,
+    CONF_CONSUMER_KEY,
+    CONF_CONSUMER_SECRET,
+    CONF_TOKEN,
+    CONF_TOKEN_SECRET,
+)
 from .FatSecretSensor import FatSecretSensor
 
 _LOGGER = logging.getLogger(__name__)
@@ -109,10 +116,10 @@ class FatSecretManager:
         """
 
         # Extract credentials from config entry
-        consumer_key = self.entry.data["consumer_key"]
-        consumer_secret = self.entry.data["consumer_secret"]
-        oauth_token = self.entry.data["oauth_token"]
-        token_secret = self.entry.data["token_secret"]
+        consumer_key = self.entry.data[CONF_CONSUMER_KEY]
+        consumer_secret = self.entry.data[CONF_CONSUMER_SECRET]
+        oauth_token = self.entry.data[CONF_TOKEN]
+        token_secret = self.entry.data[CONF_TOKEN_SECRET]
 
         url = "https://platform.fatsecret.com/rest/food-entries/v2"
         query_params = {"format": "json"}  # API params
