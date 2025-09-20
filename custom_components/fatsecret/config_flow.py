@@ -13,7 +13,10 @@ import time
 import random
 
 
-from .oauth_helpers import build_base_string, generate_signature
+from .oauth_helpers import (
+    oauth_build_base_string,
+    oauth_generate_signature,
+)
 
 from .const import (
     DOMAIN,
@@ -111,8 +114,8 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "oauth_callback": "oob",
         }
 
-        base_string = build_base_string("GET", REQUEST_TOKEN_URL, oauth_params)
-        oauth_params["oauth_signature"] = generate_signature(
+        base_string = oauth_build_base_string("GET", REQUEST_TOKEN_URL, oauth_params)
+        oauth_params["oauth_signature"] = oauth_generate_signature(
             base_string, self.consumer_secret, ""
         )
 
@@ -142,8 +145,8 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             "oauth_verifier": verifier,
         }
 
-        base_string = build_base_string("GET", ACCESS_TOKEN_URL, oauth_params)
-        oauth_params["oauth_signature"] = generate_signature(
+        base_string = oauth_build_base_string("GET", ACCESS_TOKEN_URL, oauth_params)
+        oauth_params["oauth_signature"] = oauth_generate_signature(
             base_string,
             self.consumer_secret,
             self.request_token_secret,

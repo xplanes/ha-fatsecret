@@ -3,7 +3,7 @@
 import urllib.parse, hmac, hashlib, base64
 
 
-def build_base_string(method, url, params):
+def oauth_build_base_string(method, url, params):
     sorted_params = "&".join(
         f"{urllib.parse.quote(k, safe='')}={urllib.parse.quote(v, safe='')}"
         for k, v in sorted(params.items())
@@ -17,7 +17,7 @@ def build_base_string(method, url, params):
     )
 
 
-def generate_signature(
+def oauth_generate_signature(
     base_string: str, consumer_secret: str, token_secret: str
 ) -> str:
     key = f"{urllib.parse.quote(consumer_secret, safe='')}&{urllib.parse.quote(token_secret, safe='')}"
@@ -25,7 +25,7 @@ def generate_signature(
     return base64.b64encode(hashed.digest()).decode("utf-8")
 
 
-def build_authorization_header(oauth_params):
+def oauth_build_authorization_header(oauth_params):
     auth_header = "OAuth " + ", ".join(
         f'{k}="{urllib.parse.quote(str(v), safe="")}"' for k, v in oauth_params.items()
     )

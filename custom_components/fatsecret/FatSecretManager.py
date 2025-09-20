@@ -13,9 +13,9 @@ from homeassistant.helpers.event import async_track_time_change
 
 
 from .oauth_helpers import (
-    build_authorization_header,
-    build_base_string,
-    generate_signature,
+    oauth_build_authorization_header,
+    oauth_build_base_string,
+    oauth_generate_signature,
 )
 
 from .const import (
@@ -131,13 +131,13 @@ class FatSecretManager:
             "oauth_token": self.entry.data[CONF_TOKEN],
         }
         all_params = {**oauth_params, **query_params}
-        base_string = build_base_string("GET", API_FOOD_ENTRIES_URL, all_params)
-        oauth_params["oauth_signature"] = generate_signature(
+        base_string = oauth_build_base_string("GET", API_FOOD_ENTRIES_URL, all_params)
+        oauth_params["oauth_signature"] = oauth_generate_signature(
             base_string,
             self.entry.data[CONF_CONSUMER_SECRET],
             self.entry.data[CONF_TOKEN_SECRET],
         )
-        auth_header = build_authorization_header(oauth_params)
+        auth_header = oauth_build_authorization_header(oauth_params)
 
         async with aiohttp.ClientSession() as session:
             async with session.get(
