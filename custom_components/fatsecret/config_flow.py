@@ -1,34 +1,29 @@
 """Config flow for the FatSecret integration."""
 
 import logging
-import voluptuous as vol
-
-from homeassistant import config_entries
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import aiohttp_client
+import random
+import time
+import urllib.parse
 
 import aiohttp
-import urllib.parse
-import time
-import random
-
-
-from .oauth_helpers import (
-    oauth_build_base_string,
-    oauth_generate_signature,
-)
+import voluptuous as vol
+from homeassistant import config_entries
 
 from .const import (
-    DOMAIN,
+    ACCESS_TOKEN_URL,
+    AUTHORIZE_URL,
     CONF_CONSUMER_KEY,
     CONF_CONSUMER_SECRET,
     CONF_TOKEN,
     CONF_TOKEN_SECRET,
-    REQUEST_TOKEN_URL,
-    AUTHORIZE_URL,
-    ACCESS_TOKEN_URL,
+    DOMAIN,
     OAUTH_SIGNATURE_METHOD,
     OAUTH_VERSION,
+    REQUEST_TOKEN_URL,
+)
+from .oauth_helpers import (
+    oauth_build_base_string,
+    oauth_generate_signature,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,7 +32,9 @@ _LOGGER = logging.getLogger(__name__)
 class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for FatSecret."""
 
-    VERSION = 1
+    def is_matching(self, other_flow: config_entries.ConfigFlow) -> bool:
+        """Check if the other flow matches this config flow."""
+        return getattr(other_flow, "DOMAIN", None) == DOMAIN
 
     def __init__(self):
         self.consumer_key: str = ""
@@ -55,8 +52,8 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             try:
                 await self._get_request_token()
                 return await self.async_step_authorize()
-            except Exception as e:
-                _LOGGER.exception("Failed to obtain request token")
+            except (aiohttp.ClientError, ValueError) as err:
+                _LOGGER.exception("Failed to obtain request token: %s", err)
                 errors["base"] = "auth_failed"
 
         schema = vol.Schema(
@@ -70,10 +67,7 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_authorize(self, user_input=None):
         """Show the user a link to authorize."""
         auth_url = f"{AUTHORIZE_URL}?oauth_token={self.request_token}"
-        # Wrap URL in HTML <a> tag
-        auth_link_html = f'<a href="{auth_url}" target="_blank">Click here to authorize FatSecret</a>'
 
-        """Show the user a link to authorize."""
         if user_input is not None:
             # user entered oauth_verifier
             verifier = user_input["verifier"]
@@ -88,7 +82,8 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_TOKEN_SECRET: access_token_secret,
                 }
                 return self.async_create_entry(title="FatSecret", data=data)
-            except Exception:
+            except (aiohttp.ClientError, ValueError) as err:
+                _LOGGER.exception("Failed to obtain access token: %s", err)
                 return self.async_show_form(
                     step_id="authorize",
                     data_schema=vol.Schema({vol.Required("verifier"): str}),
@@ -128,7 +123,7 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         qs = dict(urllib.parse.parse_qsl(resp_text))
 
         if "oauth_token" not in qs:
-            raise Exception(f"Failed to obtain request token: {qs}")
+            raise ValueError(f"Failed to obtain request token: {qs}")
 
         self.request_token = qs["oauth_token"]
         self.request_token_secret = qs["oauth_token_secret"]
