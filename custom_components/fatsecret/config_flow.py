@@ -11,12 +11,9 @@ import aiohttp
 import urllib.parse
 import time
 import random
-import string
-import hmac
-import hashlib
-import base64
 
-from .oauth_helpers import oauth1_request
+
+from .oauth_helpers import build_base_string, generate_signature
 
 from .const import (
     DOMAIN,
@@ -24,41 +21,14 @@ from .const import (
     CONF_CONSUMER_SECRET,
     CONF_TOKEN,
     CONF_TOKEN_SECRET,
+    REQUEST_TOKEN_URL,
+    AUTHORIZE_URL,
+    ACCESS_TOKEN_URL,
+    OAUTH_SIGNATURE_METHOD,
+    OAUTH_VERSION,
 )
 
 _LOGGER = logging.getLogger(__name__)
-
-REQUEST_TOKEN_URL = "https://authentication.fatsecret.com/oauth/request_token"
-AUTHORIZE_URL = "https://authentication.fatsecret.com/oauth/authorize"
-ACCESS_TOKEN_URL = "https://authentication.fatsecret.com/oauth/access_token"
-
-
-def _generate_nonce(length=8):
-    return "".join(
-        random.choice(string.ascii_letters + string.digits) for _ in range(length)
-    )
-
-
-def _generate_signature(
-    base_string: str, consumer_secret: str, token_secret: str = ""
-) -> str:
-    key = f"{consumer_secret}&{token_secret}"
-    hashed = hmac.new(key.encode("utf-8"), base_string.encode("utf-8"), hashlib.sha1)
-    return base64.b64encode(hashed.digest()).decode("utf-8")
-
-
-def _build_base_string(method, url, params):
-    sorted_params = "&".join(
-        f"{urllib.parse.quote(k, safe='')}={urllib.parse.quote(v, safe='')}"
-        for k, v in sorted(params.items())
-    )
-    return "&".join(
-        [
-            method.upper(),
-            urllib.parse.quote(url, safe=""),
-            urllib.parse.quote(sorted_params, safe=""),
-        ]
-    )
 
 
 class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -67,10 +37,10 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     def __init__(self):
-        self.consumer_key: str | None = None
-        self.consumer_secret: str | None = None
-        self.request_token: str | None = None
-        self.request_token_secret: str | None = None
+        self.consumer_key: str = ""
+        self.consumer_secret: str = ""
+        self.request_token: str = ""
+        self.request_token_secret: str = ""
 
     async def async_step_user(self, user_input=None):
         errors = {}
@@ -132,15 +102,25 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def _get_request_token(self):
         """Request a temporary request token."""
 
-        resp_text = await oauth1_request(
-            method="GET",
-            url=REQUEST_TOKEN_URL,
-            consumer_key=self.consumer_key,
-            consumer_secret=self.consumer_secret,
-            callback_url="oob",
-            use_headers=False,
+        oauth_params = {
+            "oauth_consumer_key": self.consumer_key,
+            "oauth_nonce": str(random.randint(0, 100000000)),
+            "oauth_timestamp": str(int(time.time())),
+            "oauth_signature_method": OAUTH_SIGNATURE_METHOD,
+            "oauth_version": OAUTH_VERSION,
+            "oauth_callback": "oob",
+        }
+
+        base_string = build_base_string("GET", REQUEST_TOKEN_URL, oauth_params)
+        oauth_params["oauth_signature"] = generate_signature(
+            base_string, self.consumer_secret, ""
         )
-        _LOGGER.debug("Request token response: %s", resp_text)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(REQUEST_TOKEN_URL, params=oauth_params) as resp:
+                resp.raise_for_status()
+                resp_text = await resp.text()
+                _LOGGER.debug("Request token response: %s", resp_text)
 
         qs = dict(urllib.parse.parse_qsl(resp_text))
 
@@ -152,25 +132,25 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _get_access_token(self, verifier: str):
         """Exchange the request token for an access token."""
-        params = {
+        oauth_params = {
             "oauth_consumer_key": self.consumer_key,
-            "oauth_token": self.request_token,
-            "oauth_nonce": _generate_nonce(),
-            "oauth_signature_method": "HMAC-SHA1",
+            "oauth_nonce": str(random.randint(0, 100000000)),
             "oauth_timestamp": str(int(time.time())),
+            "oauth_signature_method": OAUTH_SIGNATURE_METHOD,
+            "oauth_version": OAUTH_VERSION,
+            "oauth_token": self.request_token,
             "oauth_verifier": verifier,
-            "oauth_version": "1.0",
         }
 
-        base_string = _build_base_string("GET", ACCESS_TOKEN_URL, params)
-        params["oauth_signature"] = _generate_signature(
+        base_string = build_base_string("GET", ACCESS_TOKEN_URL, oauth_params)
+        oauth_params["oauth_signature"] = generate_signature(
             base_string,
             self.consumer_secret,
             self.request_token_secret,
         )
 
         async with aiohttp.ClientSession() as session:
-            async with session.get(ACCESS_TOKEN_URL, params=params) as resp:
+            async with session.get(ACCESS_TOKEN_URL, params=oauth_params) as resp:
                 text = await resp.text()
                 _LOGGER.debug("Access token response: %s", text)
                 qs = dict(urllib.parse.parse_qsl(text))

@@ -1,14 +1,9 @@
 """Module for managing the FatSecret component."""
 
-import base64
-import hashlib
-import hmac
 import logging
 import random
 import time
-import urllib.parse
 from datetime import datetime
-
 import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
@@ -16,7 +11,12 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 
-from .oauth_helpers import oauth1_request
+
+from .oauth_helpers import (
+    build_authorization_header,
+    build_base_string,
+    generate_signature,
+)
 
 from .const import (
     DOMAIN,
@@ -25,6 +25,9 @@ from .const import (
     CONF_CONSUMER_SECRET,
     CONF_TOKEN,
     CONF_TOKEN_SECRET,
+    API_FOOD_ENTRIES_URL,
+    OAUTH_SIGNATURE_METHOD,
+    OAUTH_VERSION,
 )
 from .FatSecretSensor import FatSecretSensor
 
@@ -117,19 +120,33 @@ class FatSecretManager:
         calories, carbs, protein, fat, fiber, sugar
         """
 
-        url = "https://platform.fatsecret.com/rest/food-entries/v2"
         query_params = {"format": "json"}  # API params
 
-        data = await oauth1_request(
-            method="GET",
-            url=url,
-            consumer_key=self.entry.data[CONF_CONSUMER_KEY],
-            consumer_secret=self.entry.data[CONF_CONSUMER_SECRET],
-            token=self.entry.data[CONF_TOKEN],
-            token_secret=self.entry.data[CONF_TOKEN_SECRET],
-            params=query_params,
-            use_headers=True,
+        oauth_params = {
+            "oauth_consumer_key": self.entry.data[CONF_CONSUMER_KEY],
+            "oauth_nonce": str(random.randint(0, 100000000)),
+            "oauth_timestamp": str(int(time.time())),
+            "oauth_signature_method": OAUTH_SIGNATURE_METHOD,
+            "oauth_version": OAUTH_VERSION,
+            "oauth_token": self.entry.data[CONF_TOKEN],
+        }
+        all_params = {**oauth_params, **query_params}
+        base_string = build_base_string("GET", API_FOOD_ENTRIES_URL, all_params)
+        oauth_params["oauth_signature"] = generate_signature(
+            base_string,
+            self.entry.data[CONF_CONSUMER_SECRET],
+            self.entry.data[CONF_TOKEN_SECRET],
         )
+        auth_header = build_authorization_header(oauth_params)
+
+        async with aiohttp.ClientSession() as session:
+            async with session.get(
+                API_FOOD_ENTRIES_URL,
+                headers={"Authorization": auth_header},
+                params=query_params,
+            ) as resp:
+                resp.raise_for_status()
+                data = await resp.json()
 
         # Sum up metrics
         totals = dict.fromkeys(SENSOR_TYPES, 0.0)
