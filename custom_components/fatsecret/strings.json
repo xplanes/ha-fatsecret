@@ -1,0 +1,10 @@
+{
+  "config": {
+    "step": {
+      "authorize": {
+        "title": "Authorize FatSecret",
+        "description": "Please authorize the app by visiting this link:\n\n{auth_url}\n\nThen enter the verifier code below."
+      }
+    }
+  }
+}

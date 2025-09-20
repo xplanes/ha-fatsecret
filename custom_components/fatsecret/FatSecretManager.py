@@ -16,6 +16,8 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 
+from .oauth_helpers import oauth1_request
+
 from .const import (
     DOMAIN,
     SENSOR_TYPES,
@@ -115,58 +117,19 @@ class FatSecretManager:
         calories, carbs, protein, fat, fiber, sugar
         """
 
-        # Extract credentials from config entry
-        consumer_key = self.entry.data[CONF_CONSUMER_KEY]
-        consumer_secret = self.entry.data[CONF_CONSUMER_SECRET]
-        oauth_token = self.entry.data[CONF_TOKEN]
-        token_secret = self.entry.data[CONF_TOKEN_SECRET]
-
         url = "https://platform.fatsecret.com/rest/food-entries/v2"
         query_params = {"format": "json"}  # API params
 
-        # OAuth1 params
-        oauth_params = {
-            "oauth_consumer_key": consumer_key,
-            "oauth_token": oauth_token,
-            "oauth_nonce": str(random.randint(0, 100000000)),
-            "oauth_timestamp": str(int(time.time())),
-            "oauth_signature_method": "HMAC-SHA1",
-            "oauth_version": "1.0",
-        }
-
-        # Merge API + OAuth params for signing
-        all_params = {**query_params, **oauth_params}
-        sorted_items = sorted(all_params.items())
-        encoded_params = "&".join(
-            f"{urllib.parse.quote(str(k), safe='')}={urllib.parse.quote(str(v), safe='')}"
-            for k, v in sorted_items
+        data = await oauth1_request(
+            method="GET",
+            url=url,
+            consumer_key=self.entry.data[CONF_CONSUMER_KEY],
+            consumer_secret=self.entry.data[CONF_CONSUMER_SECRET],
+            token=self.entry.data[CONF_TOKEN],
+            token_secret=self.entry.data[CONF_TOKEN_SECRET],
+            params=query_params,
+            use_headers=True,
         )
-
-        # Signature base string
-        base_string = f"GET&{urllib.parse.quote(url, safe='')}&{urllib.parse.quote(encoded_params, safe='')}"
-        signing_key = f"{urllib.parse.quote(consumer_secret, safe='')}&{urllib.parse.quote(token_secret, safe='')}"
-
-        # Create signature
-        signature = base64.b64encode(
-            hmac.new(signing_key.encode(), base_string.encode(), hashlib.sha1).digest()
-        ).decode()
-
-        oauth_params["oauth_signature"] = signature
-
-        # Build Authorization header
-        auth_header = "OAuth " + ", ".join(
-            f'{k}="{urllib.parse.quote(str(v), safe="")}"'
-            for k, v in oauth_params.items()
-        )
-
-        async with (
-            aiohttp.ClientSession() as session,
-            session.get(
-                url, headers={"Authorization": auth_header}, params=query_params
-            ) as resp,
-        ):
-            resp.raise_for_status()
-            data = await resp.json()
 
         # Sum up metrics
         totals = dict.fromkeys(SENSOR_TYPES, 0.0)
