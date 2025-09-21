@@ -17,8 +17,19 @@ from .const import (
     CONF_TOKEN,
     CONF_TOKEN_SECRET,
     DOMAIN,
+    OAUTH_PARAM_CONSUMER_KEY,
+    OAUTH_PARAM_NONCE,
+    OAUTH_PARAM_TIMESTAMP,
+    OAUTH_PARAM_TOKEN,
+    OAUTH_PARAM_VERSION,
+    OAUTH_PARAM_SIGNATURE,
+    OAUTH_PARAM_SIGNATURE_METHOD,
+    OAUTH_PARAM_CALLBACK,
+    OAUTH_PARAM_VERIFIER,
+    OAUTH_PARAM_TOKEN_SECRET,
     OAUTH_SIGNATURE_METHOD,
     OAUTH_VERSION,
+    OAUTH_CALLBACK,
     REQUEST_TOKEN_URL,
 )
 from .oauth_helpers import (
@@ -45,8 +56,8 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input=None):
         errors = {}
         if user_input is not None:
-            self.consumer_key = user_input["consumer_key"]
-            self.consumer_secret = user_input["consumer_secret"]
+            self.consumer_key = user_input[CONF_CONSUMER_KEY]
+            self.consumer_secret = user_input[CONF_CONSUMER_SECRET]
 
             # Step 1: request token
             try:
@@ -66,7 +77,7 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_authorize(self, user_input=None):
         """Show the user a link to authorize."""
-        auth_url = f"{AUTHORIZE_URL}?oauth_token={self.request_token}"
+        auth_url = f"{AUTHORIZE_URL}?{OAUTH_PARAM_TOKEN}={self.request_token}"
 
         if user_input is not None:
             # user entered oauth_verifier
@@ -101,16 +112,16 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Request a temporary request token."""
 
         oauth_params = {
-            "oauth_consumer_key": self.consumer_key,
-            "oauth_nonce": str(random.randint(0, 100000000)),
-            "oauth_timestamp": str(int(time.time())),
-            "oauth_signature_method": OAUTH_SIGNATURE_METHOD,
-            "oauth_version": OAUTH_VERSION,
-            "oauth_callback": "oob",
+            OAUTH_PARAM_CONSUMER_KEY: self.consumer_key,
+            OAUTH_PARAM_NONCE: str(random.randint(0, 100000000)),
+            OAUTH_PARAM_TIMESTAMP: str(int(time.time())),
+            OAUTH_PARAM_SIGNATURE_METHOD: OAUTH_SIGNATURE_METHOD,
+            OAUTH_PARAM_VERSION: OAUTH_VERSION,
+            OAUTH_PARAM_CALLBACK: OAUTH_CALLBACK,
         }
 
         base_string = oauth_build_base_string("GET", REQUEST_TOKEN_URL, oauth_params)
-        oauth_params["oauth_signature"] = oauth_generate_signature(
+        oauth_params[OAUTH_PARAM_SIGNATURE] = oauth_generate_signature(
             base_string, self.consumer_secret, ""
         )
 
@@ -122,26 +133,26 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         qs = dict(urllib.parse.parse_qsl(resp_text))
 
-        if "oauth_token" not in qs:
+        if OAUTH_PARAM_TOKEN not in qs:
             raise ValueError(f"Failed to obtain request token: {qs}")
 
-        self.request_token = qs["oauth_token"]
-        self.request_token_secret = qs["oauth_token_secret"]
+        self.request_token = qs[OAUTH_PARAM_TOKEN]
+        self.request_token_secret = qs[OAUTH_PARAM_TOKEN_SECRET]
 
     async def _get_access_token(self, verifier: str):
         """Exchange the request token for an access token."""
         oauth_params = {
-            "oauth_consumer_key": self.consumer_key,
-            "oauth_nonce": str(random.randint(0, 100000000)),
-            "oauth_timestamp": str(int(time.time())),
-            "oauth_signature_method": OAUTH_SIGNATURE_METHOD,
-            "oauth_version": OAUTH_VERSION,
-            "oauth_token": self.request_token,
-            "oauth_verifier": verifier,
+            OAUTH_PARAM_CONSUMER_KEY: self.consumer_key,
+            OAUTH_PARAM_NONCE: str(random.randint(0, 100000000)),
+            OAUTH_PARAM_TIMESTAMP: str(int(time.time())),
+            OAUTH_PARAM_SIGNATURE_METHOD: OAUTH_SIGNATURE_METHOD,
+            OAUTH_PARAM_VERSION: OAUTH_VERSION,
+            OAUTH_PARAM_TOKEN: self.request_token,
+            OAUTH_PARAM_VERIFIER: verifier,
         }
 
         base_string = oauth_build_base_string("GET", ACCESS_TOKEN_URL, oauth_params)
-        oauth_params["oauth_signature"] = oauth_generate_signature(
+        oauth_params[OAUTH_PARAM_SIGNATURE] = oauth_generate_signature(
             base_string,
             self.consumer_secret,
             self.request_token_secret,
@@ -152,4 +163,4 @@ class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 text = await resp.text()
                 _LOGGER.debug("Access token response: %s", text)
                 qs = dict(urllib.parse.parse_qsl(text))
-                return qs["oauth_token"], qs["oauth_token_secret"]
+                return qs[OAUTH_PARAM_TOKEN], qs[OAUTH_PARAM_TOKEN_SECRET]

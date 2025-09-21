@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import async_track_time_change
 
+from .FatSecretSensor import FatSecretSensor
 
 from .oauth_helpers import (
     oauth_build_authorization_header,
@@ -19,17 +20,25 @@ from .oauth_helpers import (
 )
 
 from .const import (
-    DOMAIN,
-    SENSOR_TYPES,
     CONF_CONSUMER_KEY,
     CONF_CONSUMER_SECRET,
     CONF_TOKEN,
     CONF_TOKEN_SECRET,
-    API_FOOD_ENTRIES_URL,
+    OAUTH_PARAM_CONSUMER_KEY,
+    OAUTH_PARAM_NONCE,
+    OAUTH_PARAM_TIMESTAMP,
+    OAUTH_PARAM_TOKEN,
+    OAUTH_PARAM_VERSION,
+    OAUTH_PARAM_SIGNATURE,
+    OAUTH_PARAM_SIGNATURE_METHOD,
     OAUTH_SIGNATURE_METHOD,
     OAUTH_VERSION,
+    API_FOOD_ENTRIES_URL,
+    FATSECRET_FOOD_ENTRIES,
+    FATSECRET_FOOD_ENTRY,
+    DOMAIN,
+    FATSECRET_FIELDS,
 )
-from .FatSecretSensor import FatSecretSensor
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,9 +70,9 @@ class FatSecretManager:
         """Restore entities from config entry and add them to Home Assistant."""
         self._async_add_entities = async_add_entities
 
-        for metric in SENSOR_TYPES:
-            sensor = FatSecretSensor(metric)
-            self.entities[metric] = sensor
+        for field in FATSECRET_FIELDS:
+            sensor = FatSecretSensor(field)
+            self.entities[field] = sensor
 
         self._async_add_entities(list(self.entities.values()), True)
 
@@ -96,43 +105,26 @@ class FatSecretManager:
         for metric, entity in self.entities.items():
             entity.update_value(data.get(metric, 0))
 
-    async def fetch_fatsecret_data2(self) -> dict:
-        """Fetch latest FatSecret food entries and return summed metrics.
-
-        Returns a dict:
-        calories, carbs, protein, fat, fiber, sugar
-        """
-        # Implement actual API call here
-        # For demonstration, returning dummy data
-        return {
-            "calories": 2000,
-            "carbs": 250,
-            "protein": 150,
-            "fat": 70,
-            "fiber": 30,
-            "sugar": 90,
-        }
-
     async def fetch_fatsecret_data(self) -> dict:
         """Fetch latest FatSecret food entries and return summed metrics.
 
-        Returns a dict:
-        calories, carbs, protein, fat, fiber, sugar
+        Returns a dict with all fields in FATSECRET_FIELDS as keys and their summed
+        values as floats.
         """
 
         query_params = {"format": "json"}  # API params
 
         oauth_params = {
-            "oauth_consumer_key": self.entry.data[CONF_CONSUMER_KEY],
-            "oauth_nonce": str(random.randint(0, 100000000)),
-            "oauth_timestamp": str(int(time.time())),
-            "oauth_signature_method": OAUTH_SIGNATURE_METHOD,
-            "oauth_version": OAUTH_VERSION,
-            "oauth_token": self.entry.data[CONF_TOKEN],
+            OAUTH_PARAM_CONSUMER_KEY: self.entry.data[CONF_CONSUMER_KEY],
+            OAUTH_PARAM_NONCE: str(random.randint(0, 100000000)),
+            OAUTH_PARAM_TIMESTAMP: str(int(time.time())),
+            OAUTH_PARAM_SIGNATURE_METHOD: OAUTH_SIGNATURE_METHOD,
+            OAUTH_PARAM_VERSION: OAUTH_VERSION,
+            OAUTH_PARAM_TOKEN: self.entry.data[CONF_TOKEN],
         }
         all_params = {**oauth_params, **query_params}
         base_string = oauth_build_base_string("GET", API_FOOD_ENTRIES_URL, all_params)
-        oauth_params["oauth_signature"] = oauth_generate_signature(
+        oauth_params[OAUTH_PARAM_SIGNATURE] = oauth_generate_signature(
             base_string,
             self.entry.data[CONF_CONSUMER_SECRET],
             self.entry.data[CONF_TOKEN_SECRET],
@@ -149,13 +141,9 @@ class FatSecretManager:
                 data = await resp.json()
 
         # Sum up metrics
-        totals = dict.fromkeys(SENSOR_TYPES, 0.0)
-        for entry in data.get("food_entries", {}).get("food_entry", []):
-            totals["calories"] += float(entry.get("calories", 0))
-            totals["carbs"] += float(entry.get("carbohydrate", 0))
-            totals["protein"] += float(entry.get("protein", 0))
-            totals["fat"] += float(entry.get("fat", 0))
-            totals["fiber"] += float(entry.get("fiber", 0))
-            totals["sugar"] += float(entry.get("sugar", 0))
+        totals = dict.fromkeys(FATSECRET_FIELDS, 0.0)
+        for entry in data.get(FATSECRET_FOOD_ENTRIES, {}).get(FATSECRET_FOOD_ENTRY, []):
+            for field in FATSECRET_FIELDS:
+                totals[field] += float(entry.get(field, 0))
 
         return totals

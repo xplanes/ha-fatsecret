@@ -4,17 +4,17 @@ from propcache.api import cached_property
 
 from homeassistant.components.sensor import SensorEntity
 
-from .const import DOMAIN, SENSOR_TYPES
+from .const import DOMAIN
 
 
 class FatSecretSensor(SensorEntity):
     """Representation of a FatSecret sensor."""
 
-    def __init__(self, metric: str) -> None:
+    def __init__(self, field: str) -> None:
         """Initialize the sensor."""
-        self._metric: str = metric
+        self._field: str = field
         self._state: float = 0.0
-        self._name: str = f"{DOMAIN}_{SENSOR_TYPES[metric]}"
+        self._name: str = f"{DOMAIN}_{field}"
         self._unique_id: str = self._name
 
     @cached_property
