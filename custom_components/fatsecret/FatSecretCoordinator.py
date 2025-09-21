@@ -3,15 +3,12 @@
 import logging
 import random
 import time
-from datetime import datetime
+from datetime import timedelta
 import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant, ServiceCall
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.event import async_track_time_change
-
-from .FatSecretSensor import FatSecretSensor
 
 from .oauth_helpers import (
     oauth_build_authorization_header,
@@ -36,74 +33,43 @@ from .const import (
     API_FOOD_ENTRIES_URL,
     FATSECRET_FOOD_ENTRIES,
     FATSECRET_FOOD_ENTRY,
-    DOMAIN,
     FATSECRET_FIELDS,
+    DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class FatSecretManager:
+class FatSecretCoordinator(DataUpdateCoordinator):
     """Class to handle FatSecret API."""
 
     def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
-        """Initialize the FatSecretManager with Home Assistant instance and config entry."""
-        self.hass = hass
+        """Initialize the coordinator."""
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="FatSecret",
+            update_interval=timedelta(minutes=15),  # periodic update interval
+        )
         self.entry = config_entry
-        self.entities = {}
-        self._async_add_entities = None
-        self._midnight_listener = None
-        self.latest_data = None  # add in __init__
-
-    async def async_init(self):
-        """Initialize the FatSecretManager by registering services."""
-        # Initialize API client here (using entry.data for credentials)
-        await self.async_register_services()
-
-    async def async_unload(self):
-        """Unload the manager and remove all entities."""
-
-        if self._async_add_entities:
-            self._async_add_entities = None
-
-    async def restore_and_add_entities(self, async_add_entities: AddEntitiesCallback):
-        """Restore entities from config entry and add them to Home Assistant."""
-        self._async_add_entities = async_add_entities
-
-        for field in FATSECRET_FIELDS:
-            sensor = FatSecretSensor(field)
-            self.entities[field] = sensor
-
-        self._async_add_entities(list(self.entities.values()), True)
-
-    async def async_register_services(self):
-        """Register Home Assistant services for plant management."""
+        self.latest_data = {}
 
         async def handle_update_fatsecret(_call: ServiceCall):
-            await self.async_update_fatsecret()
+            await self._async_update_data()
 
         self.hass.services.async_register(
             DOMAIN, "update_fatsecret", handle_update_fatsecret
         )
 
-        self._midnight_listener = async_track_time_change(
-            self.hass,
-            self.async_update_fatsecret,
-            hour=0,
-            minute=0,
-            second=1,
-        )
-
-    async def async_update_fatsecret(self, _now: datetime | None = None):
-        """Update the sensors."""
-
-        # Example: call your API or fetch from Node-RED
-        data = await self.fetch_fatsecret_data()
-
-        self.latest_data = data
-
-        for metric, entity in self.entities.items():
-            entity.update_value(data.get(metric, 0))
+    async def _async_update_data(self):
+        """Fetch data from FatSecret API."""
+        try:
+            # Call your API client once
+            data = await self.fetch_fatsecret_data()
+            self.latest_data = data
+            return data
+        except Exception as err:
+            raise UpdateFailed(f"FatSecret update failed: {err}") from err
 
     async def fetch_fatsecret_data(self) -> dict:
         """Fetch latest FatSecret food entries and return summed metrics.

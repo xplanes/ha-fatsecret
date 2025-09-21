@@ -8,36 +8,35 @@ from homeassistant.loader import IntegrationNotLoaded
 from homeassistant.helpers import config_validation as cv
 
 from .const import DOMAIN
-from .FatSecretManager import FatSecretManager
+from .FatSecretCoordinator import FatSecretCoordinator
 
 _LOGGER = logging.getLogger(__name__)
 
 CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Set up the integration from a config entry."""
-
-    # Initialize the DOMAIN in hass.data if it doesn't exist
-    if DOMAIN not in hass.data:
-        hass.data[DOMAIN] = {}
 
     # Initialize the FatSecret and store it in hass.data
     # with the entry ID as the key
-    fatsecret = FatSecretManager(hass, entry)
-    await fatsecret.async_init()
+    coordinator = FatSecretCoordinator(hass, entry)
 
-    hass.data[DOMAIN][entry.entry_id] = fatsecret
+    # Ensure first refresh happens
+    await coordinator.async_config_entry_first_refresh()
 
-    # Set up the sensor platform
-    hass.async_create_task(
-        hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
-    )
+    # Store coordinator in hass.data
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    # Forward to platforms (e.g., sensor)
+    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
+
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Unload the plant diary manager and its entities."""
+async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Unload the coordinator and its entities."""
 
     # Unload the platforms (e.g., sensor)
     try:
@@ -45,19 +44,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     except IntegrationNotLoaded:
         pass
 
-    # Cleanup manager
-    manager: FatSecretManager = hass.data[DOMAIN].pop(entry.entry_id, None)
-    if manager:
-        await manager.async_unload()
-
     # Optionally remove the domain if empty
     if not hass.data[DOMAIN]:
         hass.data.pop(DOMAIN)
 
     return True
-
-
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Handle reloads of the config entry."""
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
