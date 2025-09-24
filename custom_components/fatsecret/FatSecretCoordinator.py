@@ -35,6 +35,7 @@ from .const import (
     FATSECRET_FOOD_ENTRY,
     FATSECRET_FIELDS,
     DOMAIN,
+    FATSECRET_UPDATE_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,7 +50,9 @@ class FatSecretCoordinator(DataUpdateCoordinator):
             hass,
             _LOGGER,
             name="FatSecret",
-            update_interval=timedelta(minutes=15),  # periodic update interval
+            update_interval=timedelta(
+                minutes=FATSECRET_UPDATE_INTERVAL
+            ),  # periodic update interval
         )
         self.entry = config_entry
         self.latest_data = {}

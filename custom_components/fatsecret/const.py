@@ -30,21 +30,22 @@ OAUTH_CALLBACK = "oob"  # out-of-band, user will copy-paste verifier
 
 FATSECRET_FOOD_ENTRIES = "food_entries"
 FATSECRET_FOOD_ENTRY = "food_entry"
-FATSECRET_FIELDS = [
-    "calcium",
-    "calories",
-    "carbohydrate",
-    "cholesterol",
-    "fat",
-    "fiber",
-    "sugar",
-    "iron",
-    "monounsaturated_fat",
-    "polyunsaturated_fat",
-    "potassium",
-    "protein",
-    "saturated_fat",
-    "sodium",
-    "vitamin_a",
-    "vitamin_c",
-]
+FATSECRET_FIELDS = {
+    "calories": "kcal",
+    "carbohydrate": "g",
+    "protein": "g",
+    "fat": "g",
+    "fiber": "g",
+    "sugar": "g",
+    "cholesterol": "mg",
+    "iron": "mg",
+    "calcium": "mg",
+    "monounsaturated_fat": "g",
+    "polyunsaturated_fat": "g",
+    "saturated_fat": "g",
+    "potassium": "mg",
+    "sodium": "mg",
+    "vitamin_a": "µg",
+    "vitamin_c": "mg",
+}
+FATSECRET_UPDATE_INTERVAL = 15

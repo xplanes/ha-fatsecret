@@ -8,7 +8,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
 )
 
-from .const import DOMAIN
+from .const import DOMAIN, FATSECRET_FIELDS
 
 
 class FatSecretSensor(CoordinatorEntity, SensorEntity):
@@ -30,3 +30,7 @@ class FatSecretSensor(CoordinatorEntity, SensorEntity):
             return None
         else:
             return float(value)
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        return FATSECRET_FIELDS.get(self._field)
