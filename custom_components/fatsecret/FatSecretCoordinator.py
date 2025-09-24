@@ -58,7 +58,7 @@ class FatSecretCoordinator(DataUpdateCoordinator):
         self.latest_data = {}
 
         async def handle_update_fatsecret(_call: ServiceCall):
-            await self._async_update_data()
+            await self.async_refresh()
 
         self.hass.services.async_register(
             DOMAIN, "update_fatsecret", handle_update_fatsecret
