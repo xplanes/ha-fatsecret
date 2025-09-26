@@ -4,7 +4,7 @@ This is a custom [Home Assistant](https://www.home-assistant.io/) integration th
 
 ## Notes
 
-- Requires a FatSecret API account to obtain the `Consumer Key` and the `Consumer Secret`.
+- Requires a FatSecret API account to obtain the `Consumer Key` and the `Consumer Secret` when installing the integration.
 - Data is fetched for the current day.
 - Sensors update every 15 minutes.
 
@@ -33,3 +33,19 @@ This is a custom [Home Assistant](https://www.home-assistant.io/) integration th
 # Services
 
 The integration provides a service to manually refresh data: `update_fatsecret`
+
+# Issues & Feedback
+
+If you encounter any issues or would like to suggest improvements:
+
+- Open an issue on GitHub: [https://github.com/xplanes/ha-fatsecret/issues](https://github.com/xplanes/ha-fatsecret/issues)
+- Pull requests are welcome!
+
+Please include logs or reproduction steps when reporting bugs.
+
+# License
+
+This project is licensed under the **MIT License**.
+See the [LICENSE](LICENSE) file for full license text.
+
+© 2025 [@xplanes](https://github.com/xplanes)
