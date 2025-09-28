@@ -49,3 +49,15 @@ FATSECRET_FIELDS = {
     "vitamin_c": "mg",
 }
 FATSECRET_UPDATE_INTERVAL = 15
+
+
+FATSECRET_FOOD_ENTRIES_ERRORS = {
+    2: "Missing required OAuth parameter",
+    3: "Unsupported OAuth parameter",
+    4: "Invalid signature method",
+    5: "Invalid consumer key",
+    6: "Invalid/expired timestamp",
+    7: "Invalid/used nonce",
+    8: "Invalid signature",
+    9: "Invalid access token",
+}

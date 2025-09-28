@@ -36,6 +36,7 @@ from .const import (
     FATSECRET_FIELDS,
     DOMAIN,
     FATSECRET_UPDATE_INTERVAL,
+    FATSECRET_FOOD_ENTRIES_ERRORS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -100,19 +101,60 @@ class FatSecretCoordinator(DataUpdateCoordinator):
         )
         auth_header = oauth_build_authorization_header(oauth_params)
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(
+        async with (
+            aiohttp.ClientSession() as session,
+            session.get(
                 API_FOOD_ENTRIES_URL,
                 headers={"Authorization": auth_header},
                 params=query_params,
-            ) as resp:
+            ) as resp,
+        ):
+            # 1️⃣ Network-level errors
+            try:
                 resp.raise_for_status()
-                data = await resp.json()
+            except aiohttp.ClientResponseError as e:
+                raise UpdateFailed(f"HTTP error {resp.status}: {e.message}") from e
 
-        # Sum up metrics
+            # 2️⃣ Parse JSON
+            try:
+                data = await resp.json()
+            except aiohttp.ContentTypeError as exc:
+                raise UpdateFailed("FatSecret response is not valid JSON") from exc
+
+        # 3️⃣ API-level error handling (OAuth or API error codes)
+        if isinstance(data, dict) and "error" in data:
+            err = data["error"]
+            code = err.get("code")
+            message = err.get("message", "No message provided")
+
+            # Known OAuth errors
+            if code in FATSECRET_FOOD_ENTRIES_ERRORS:
+                explanation = FATSECRET_FOOD_ENTRIES_ERRORS[code]
+                _LOGGER.error(
+                    "FatSecret API error %s: %s — %s", code, explanation, message
+                )
+                raise UpdateFailed(f"OAuth error {code}: {explanation}")
+            else:
+                # Unknown error code — still raise
+                raise UpdateFailed(f"FatSecret returned error {code}: {message}")
+
+        # 4️⃣ Normal data processing
         totals = dict.fromkeys(FATSECRET_FIELDS, 0.0)
-        for entry in data.get(FATSECRET_FOOD_ENTRIES, {}).get(FATSECRET_FOOD_ENTRY, []):
+        food_entries = (
+            data.get(FATSECRET_FOOD_ENTRIES, {}).get(FATSECRET_FOOD_ENTRY, [])
+            if isinstance(data, dict)
+            else []
+        )
+
+        for entry in food_entries:
             for field in FATSECRET_FIELDS:
-                totals[field] += float(entry.get(field, 0))
+                try:
+                    totals[field] += float(entry.get(field, 0) or 0)
+                except (TypeError, ValueError):
+                    _LOGGER.debug(
+                        "Invalid value for field %s: %s",
+                        field,
+                        entry.get(field),
+                    )
 
         return totals
