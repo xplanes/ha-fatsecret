@@ -31,22 +31,22 @@ OAUTH_CALLBACK = "oob"  # out-of-band, user will copy-paste verifier
 FATSECRET_FOOD_ENTRIES = "food_entries"
 FATSECRET_FOOD_ENTRY = "food_entry"
 FATSECRET_FIELDS = {
-    "calories": "kcal",
-    "carbohydrate": "g",
-    "protein": "g",
-    "fat": "g",
-    "fiber": "g",
-    "sugar": "g",
-    "cholesterol": "mg",
-    "iron": "mg",
-    "calcium": "mg",
-    "monounsaturated_fat": "g",
-    "polyunsaturated_fat": "g",
-    "saturated_fat": "g",
-    "potassium": "mg",
-    "sodium": "mg",
-    "vitamin_a": "µg",
-    "vitamin_c": "mg",
+    "calories": {"unit": "kcal", "name": "Calories"},
+    "carbohydrate": {"unit": "g", "name": "Carbohydrates"},
+    "protein": {"unit": "g", "name": "Protein"},
+    "fat": {"unit": "g", "name": "Fat"},
+    "fiber": {"unit": "g", "name": "Fiber"},
+    "sugar": {"unit": "g", "name": "Sugar"},
+    "cholesterol": {"unit": "mg", "name": "Cholesterol"},
+    "iron": {"unit": "mg", "name": "Iron"},
+    "calcium": {"unit": "mg", "name": "Calcium"},
+    "monounsaturated_fat": {"unit": "g", "name": "Monounsaturated Fat"},
+    "polyunsaturated_fat": {"unit": "g", "name": "Polyunsaturated Fat"},
+    "saturated_fat": {"unit": "g", "name": "Saturated Fat"},
+    "potassium": {"unit": "mg", "name": "Potassium"},
+    "sodium": {"unit": "mg", "name": "Sodium"},
+    "vitamin_a": {"unit": "µg", "name": "Vitamin A"},
+    "vitamin_c": {"unit": "mg", "name": "Vitamin C"},
 }
 FATSECRET_UPDATE_INTERVAL = 15
 

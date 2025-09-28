@@ -18,8 +18,11 @@ class FatSecretSensor(CoordinatorEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._field: str = field
-        self._attr_name = f"{DOMAIN}_{field}"
+
+        field_meta = FATSECRET_FIELDS[field]
+        self._attr_name = f"{field_meta['name']}"
         self._attr_unique_id = f"{DOMAIN}_{field}"
+        self._attr_native_unit_of_measurement = field_meta["unit"]
         self.coordinator: DataUpdateCoordinator = coordinator
 
     @property  # type: ignore[override]
@@ -33,4 +36,5 @@ class FatSecretSensor(CoordinatorEntity, SensorEntity):
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        return FATSECRET_FIELDS.get(self._field)
+        """Return the unit of measurement."""
+        return self._attr_native_unit_of_measurement
