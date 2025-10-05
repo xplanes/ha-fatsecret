@@ -54,6 +54,7 @@ class FatSecretCoordinator(DataUpdateCoordinator):
             update_interval=timedelta(
                 minutes=FATSECRET_UPDATE_INTERVAL
             ),  # periodic update interval
+            config_entry=config_entry,
         )
         self.entry = config_entry
         self.latest_data = {}
