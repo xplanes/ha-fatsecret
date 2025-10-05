@@ -141,7 +141,7 @@ class FatSecretCoordinator(DataUpdateCoordinator):
         # 4️⃣ Normal data processing
         totals = dict.fromkeys(FATSECRET_FIELDS, 0.0)
         food_entries = (
-            data.get(FATSECRET_FOOD_ENTRIES, {}).get(FATSECRET_FOOD_ENTRY, [])
+            (data.get(FATSECRET_FOOD_ENTRIES) or {}).get(FATSECRET_FOOD_ENTRY, [])
             if isinstance(data, dict)
             else []
         )

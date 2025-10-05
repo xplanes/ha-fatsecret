@@ -40,7 +40,7 @@ from .oauth_helpers import (
 _LOGGER = logging.getLogger(__name__)
 
 
-class FatsecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class FatSecretConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for FatSecret."""
 
     def is_matching(self, other_flow: config_entries.ConfigFlow) -> bool:
