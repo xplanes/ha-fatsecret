@@ -13,7 +13,7 @@
         "-v",
         "--cov=custom_components/fatsecret",
         "--cov-report=term-missing",
-        //"tests/test_init.py"
+        //"tests/test_sensor.py"
       ],
       "console": "integratedTerminal",
       "justMyCode": true,
