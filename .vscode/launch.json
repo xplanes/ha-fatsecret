@@ -10,11 +10,12 @@
       "request": "launch",
       "module": "pytest",
       "args": [
-        "-v"
+        "-v",
+        "tests/test_init.py"
       ],
       "console": "integratedTerminal",
       "justMyCode": true,
-       "cwd": "${workspaceFolder}"
+       "cwd": "/workspaces/ha-fatsecret"
     }
   ]
 }
