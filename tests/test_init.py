@@ -1,84 +1,81 @@
-"""Tests for Plant Diary integration."""
-
-import pathlib
-import types
-from unittest import mock
-
 import pytest
-from homeassistant import config_entries
-from homeassistant.loader import Integration
-from homeassistant.setup import async_setup_component
-from homeassistant.core import HomeAssistant
+from unittest.mock import AsyncMock, patch, MagicMock
 
-from custom_components.fatsecret import (
-    config_flow,
-)
-
-DEFAULT_NAME = "My FatSecret"
+import custom_components.fatsecret.__init__ as fatsecret_init
+from custom_components.fatsecret.const import DOMAIN
 
 
 @pytest.mark.asyncio
-async def test_flow_user_init(hass: HomeAssistant) -> None:
-    """Test the initialization of the form in the first step of the config flow."""
+async def test_async_setup_entry():
+    # Mock ConfigEntry
+    entry = MagicMock()
+    entry.entry_id = "entry_123"
 
-    # Registramos manualmente el flujo
-    config_entries.HANDLERS[config_flow.DOMAIN] = config_flow.FatSecretConfigFlow
+    hass = MagicMock()
+    hass.data = {}
+    hass.config_entries.async_forward_entry_setups = AsyncMock()
 
-    mock_integration = Integration(
-        hass=hass,
-        pkg_path="custom_components.fatsecret",
-        file_path=pathlib.Path("custom_components/fatsecret/__init__.py"),
-        manifest={
-            "domain": config_flow.DOMAIN,
-            "name": "FatSecret",
-            "version": "1.0.0",
-            "requirements": [],
-            "dependencies": [],
-            "after_dependencies": [],
-            "is_built_in": False,
-        },
-        top_level_files={
-            "custom_components/fatsecret/manifest.json",
-            "custom_components/fatsecret/config_flow.py",
-            "custom_components/fatsecret/const.py",
-            "custom_components/fatsecret/FatSecretEntity.py",
-            "custom_components/fatsecret/FatSecretManager.py",
-            "custom_components/fatsecret/services.yaml",
-        },
+    # Mock FatSecretCoordinator
+    with patch(
+        "custom_components.fatsecret.__init__.FatSecretCoordinator"
+    ) as MockCoordinator:
+        mock_coordinator = AsyncMock()
+        MockCoordinator.return_value = mock_coordinator
+
+        # Simular refresh inicial
+        mock_coordinator.async_config_entry_first_refresh = AsyncMock()
+
+        result = await fatsecret_init.async_setup_entry(hass, entry)
+
+    # Comprobaciones
+    assert result is True
+    MockCoordinator.assert_called_once_with(hass, entry)
+    mock_coordinator.async_config_entry_first_refresh.assert_awaited_once()
+    assert DOMAIN in hass.data
+    assert hass.data[DOMAIN][entry.entry_id] == mock_coordinator
+    hass.config_entries.async_forward_entry_setups.assert_awaited_once_with(
+        entry, ["sensor"]
     )
 
-    mock_config_flow_module = types.SimpleNamespace()
-    mock_config_flow_module.FatSecretConfigFlow = config_flow.FatSecretConfigFlow
-    mock_integration.async_get_platform = mock.AsyncMock(
-        return_value=mock_config_flow_module
+
+@pytest.mark.asyncio
+async def test_async_unload_entry():
+    entry = MagicMock()
+    entry.entry_id = "entry_123"
+
+    hass = MagicMock()
+    coordinator_mock = MagicMock()
+    hass.data = {DOMAIN: {entry.entry_id: coordinator_mock}}
+    hass.config_entries.async_unload_platforms = AsyncMock(
+        side_effect=lambda e, p: hass.data[DOMAIN].pop(entry.entry_id)
     )
 
-    # Carga componentes necesarios (sensor, etc)
-    assert await async_setup_component(hass, "sensor", {})
+    result = await fatsecret_init.async_unload_entry(hass, entry)
 
-    with (
-        mock.patch(
-            "homeassistant.loader.async_get_integration",
-            return_value=mock_integration,
-        ),
-        mock.patch(
-            "homeassistant.loader.async_get_integrations",
-            return_value={config_flow.DOMAIN: mock_integration},
-        ),
-    ):
-        result = await hass.config_entries.flow.async_init(
-            config_flow.DOMAIN, context={"source": "user"}
-        )
+    assert result is True
+    hass.config_entries.async_unload_platforms.assert_awaited_once_with(
+        entry, ["sensor"]
+    )
+    assert DOMAIN not in hass.data  # Debe eliminarse si estaba vacío
 
-    expected = {
-        "flow_id": mock.ANY,
-        "type": mock.ANY,
-        "description_placeholders": None,
-        "handler": "fatsecret",
-        "errors": {},
-        "last_step": None,
-        "preview": None,
-        "step_id": "user",
-        "data_schema": mock.ANY,
-    }
-    assert expected == result
+
+@pytest.mark.asyncio
+async def test_async_unload_entry_integration_not_loaded():
+    entry = MagicMock()
+    entry.entry_id = "entry_123"
+
+    hass = MagicMock()
+    hass.data = {DOMAIN: {entry.entry_id: MagicMock()}}
+
+    # El side_effect debe ser un callable que devuelva la excepción con el dominio
+    def raise_integration_not_loaded(*args, **kwargs):
+        raise fatsecret_init.IntegrationNotLoaded(domain=DOMAIN)
+
+    # Simular IntegrationNotLoaded
+    hass.config_entries.async_unload_platforms = AsyncMock(
+        side_effect=raise_integration_not_loaded
+    )
+
+    # No debe lanzar excepción
+    result = await fatsecret_init.async_unload_entry(hass, entry)
+    assert result is True
