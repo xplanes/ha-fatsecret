@@ -82,9 +82,11 @@ class FatSecretCoordinator(DataUpdateCoordinator):
         Returns a dict with all fields in FATSECRET_FIELDS as keys and their summed
         values as floats.
         """
-
-        query_params = {"format": "json"}  # API params
-
+        local_today = dt_util.now().date().isoformat()
+        
+        query_params = {"format": "json",
+                       "date": local_today,
+        }  # API params
         oauth_params = {
             OAUTH_PARAM_CONSUMER_KEY: self.entry.data[CONF_CONSUMER_KEY],
             OAUTH_PARAM_NONCE: str(random.randint(0, 100000000)),
