@@ -48,4 +48,10 @@ Please include logs or reproduction steps when reporting bugs.
 This project is licensed under the **MIT License**.
 See the [LICENSE](LICENSE) file for full license text.
 
+# Attribution
+
+This integration uses nutrition data provided by the FatSecret Platform API.
+
+Powered by FatSecret.
+
 © 2025 [@xplanes](https://github.com/xplanes)
