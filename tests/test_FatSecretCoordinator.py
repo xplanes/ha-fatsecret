@@ -78,24 +78,23 @@ async def test_coordinator_init_register_service():
 
 
 @pytest.mark.asyncio
-async def test_handle_update_fatsecret_service(hass: HomeAssistant):
+async def test_handle_update_fatsecret_service():
     """Test that calling the update_fatsecret service triggers async_refresh."""
+    hass = MagicMock()
     entry = MockConfigEntry()
 
     coordinator = FatSecretCoordinator(hass, entry)
 
-    # Patch async_refresh para comprobar que se llama
+    # Patch async_refresh to check it is called
     coordinator.async_refresh = AsyncMock()
 
-    # Llamamos al servicio registrado
-    await hass.services.async_call(
-        DOMAIN,
-        "update_fatsecret",
-        service_data={},
-        blocking=True,
-    )
+    # Invoke the registered service handler directly (captured from async_register)
+    registered_call = hass.services.async_register.call_args
+    # handler is the 3rd positional arg passed to async_register
+    handler = registered_call[0][2]
+    await handler(Mock())
 
-    # Comprobamos que async_refresh fue llamado
+    # Ensure async_refresh was awaited
     coordinator.async_refresh.assert_awaited_once()
 
 

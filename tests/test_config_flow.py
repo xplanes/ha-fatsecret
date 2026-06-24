@@ -28,7 +28,8 @@ async def test_is_matching():
 
 
 @pytest.mark.asyncio
-async def test_step_user_no_input(hass: HomeAssistant):
+async def test_step_user_no_input():
+    hass = MagicMock()
     flow = config_flow.FatSecretConfigFlow()
     result = await flow.async_step_user()
     assert result["type"] == "form"
@@ -38,7 +39,8 @@ async def test_step_user_no_input(hass: HomeAssistant):
 
 
 @pytest.mark.asyncio
-async def test_step_user_with_input_success(hass: HomeAssistant):
+async def test_step_user_with_input_success():
+    hass = MagicMock()
     flow = config_flow.FatSecretConfigFlow()
     user_input = {
         CONF_CONSUMER_KEY: "my_key",
@@ -57,7 +59,8 @@ async def test_step_user_with_input_success(hass: HomeAssistant):
 
 
 @pytest.mark.asyncio
-async def test_step_user_with_input_error(hass: HomeAssistant):
+async def test_step_user_with_input_error():
+    hass = MagicMock()
     flow = config_flow.FatSecretConfigFlow()
     user_input = {
         CONF_CONSUMER_KEY: "my_key",

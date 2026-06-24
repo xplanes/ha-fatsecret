@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, AsyncMock
+from unittest.mock import Mock, AsyncMock, MagicMock
 
 from custom_components.fatsecret.sensor import async_setup_entry
 from custom_components.fatsecret.const import DOMAIN, FATSECRET_FIELDS
@@ -8,13 +8,15 @@ from custom_components.fatsecret.FatSecretCoordinator import FatSecretCoordinato
 
 
 @pytest.mark.asyncio
-async def test_async_setup_entry_creates_sensors(hass):
+async def test_async_setup_entry_creates_sensors():
     """Test that async_setup_entry adds one sensor per field."""
+    hass = MagicMock()
     entry = Mock()
     entry.entry_id = "test_entry"
 
     # Create a mock coordinator and store in hass.data
     mock_coordinator = Mock(spec=FatSecretCoordinator)
+    hass.data = {}
     hass.data[DOMAIN] = {entry.entry_id: mock_coordinator}
 
     # Use a mock for async_add_entities
@@ -37,12 +39,14 @@ async def test_async_setup_entry_creates_sensors(hass):
 
 
 @pytest.mark.asyncio
-async def test_async_setup_entry_no_coordinator(hass):
+async def test_async_setup_entry_no_coordinator():
     """Test that async_setup_entry does nothing if coordinator is missing."""
+    hass = MagicMock()
     entry = Mock()
     entry.entry_id = "missing_entry"
 
     # hass.data is empty
+    hass.data = {}
     hass.data[DOMAIN] = {}
 
     async_add_entities = Mock()
