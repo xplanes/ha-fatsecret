@@ -9,6 +9,7 @@ import aiohttp
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.util import dt as dt_util
 
 from .oauth_helpers import (
     oauth_build_authorization_header,
@@ -83,7 +84,11 @@ class FatSecretCoordinator(DataUpdateCoordinator):
         values as floats.
         """
 
-        query_params = {"format": "json"}  # API params
+        # Request entries for the current local date to ensure day boundaries
+        # match Home Assistant's configured timezone rather than UTC.
+        # Use Home Assistant's default timezone via dt_util.now()
+        today = dt_util.now().date()
+        query_params = {"format": "json", "date": today.isoformat()}  # API params
 
         oauth_params = {
             OAUTH_PARAM_CONSUMER_KEY: self.entry.data[CONF_CONSUMER_KEY],
