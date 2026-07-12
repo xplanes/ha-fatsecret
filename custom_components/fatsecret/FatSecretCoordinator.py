@@ -3,7 +3,7 @@
 import logging
 import random
 import time
-from datetime import timedelta
+from datetime import date as date_cls, timedelta
 import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
@@ -86,9 +86,12 @@ class FatSecretCoordinator(DataUpdateCoordinator):
 
         # Request entries for the current local date to ensure day boundaries
         # match Home Assistant's configured timezone rather than UTC.
-        # Use Home Assistant's default timezone via dt_util.now()
         today = dt_util.now().date()
-        query_params = {"format": "json", "date": today.isoformat()}  # API params
+        epoch_date = date_cls(1970, 1, 1)
+        query_params = {
+            "format": "json",
+            "date": str((today - epoch_date).days),
+        }
 
         oauth_params = {
             OAUTH_PARAM_CONSUMER_KEY: self.entry.data[CONF_CONSUMER_KEY],

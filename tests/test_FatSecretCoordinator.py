@@ -1,7 +1,9 @@
+import importlib
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock, Mock
 import aiohttp
 from aiohttp import ClientResponseError, ContentTypeError
+from datetime import date as date_cls, datetime as datetime_cls
 
 from custom_components.fatsecret.FatSecretCoordinator import FatSecretCoordinator
 from custom_components.fatsecret.const import (
@@ -148,9 +150,29 @@ async def test_fetch_fatsecret_data_normal(monkeypatch):
         }
     }
 
-    # Parchear aiohttp.ClientSession
+    fixed_date = datetime_cls(2026, 6, 24)
+    expected_date = str((date_cls(2026, 6, 24) - date_cls(1970, 1, 1)).days)
+
+    def mock_get(url, headers=None, params=None):
+        assert params["date"] == expected_date
+        assert params["format"] == "json"
+        return MockResp(fake_response, 200)
+
+    class MockSessionWithCheck(MockSession):
+        def get(self, url, headers=None, params=None):
+            return mock_get(url, headers=headers, params=params)
+
     monkeypatch.setattr(
-        "aiohttp.ClientSession", lambda: MockSession(MockResp(fake_response, 200))
+        "aiohttp.ClientSession",
+        lambda: MockSessionWithCheck(MockResp(fake_response, 200)),
+    )
+    coordinator_module = importlib.import_module(
+        "custom_components.fatsecret.FatSecretCoordinator"
+    )
+    monkeypatch.setattr(
+        coordinator_module,
+        "dt_util",
+        MagicMock(now=MagicMock(return_value=fixed_date)),
     )
 
     totals = await coordinator.fetch_fatsecret_data()
