@@ -1,10 +1,10 @@
-# FatSecret integration for Home Assistant
+# fatsecret integration for Home Assistant
 
 This is a custom [Home Assistant](https://www.home-assistant.io/) integration that connects to the [FatSecret API](https://platform.fatsecret.com/platform-api) to fetch your nutrition data for today (calories, macros, etc.) and expose them as sensors.
 
 ## Notes
 
-- Requires a FatSecret API account to obtain the `Consumer Key` and the `Consumer Secret` when installing the integration.
+- Requires a fatsecret API account to obtain the `Consumer Key` and the `Consumer Secret` when installing the integration.
 - Data is fetched for the current day.
 - Sensors update every 15 minutes.
 
@@ -28,7 +28,7 @@ This is a custom [Home Assistant](https://www.home-assistant.io/) integration th
 2. Search for `FatSecret` and add it.
 3. Enter your credentials (`Consumer Key` and the `Consumer Secret`) from the **FatSecret Platform API**
 4. A new popup window wil show you a FatSecret URL and a `verifier` field. Click on the URL
-5. A FatSecret page will ask you to sign in to your FatSecret account to obtain the verifier code. Use your **FatSecret username and password**. Do not use the FatSecret Platform API credentials. Once signed in, copy the code and put this code in the verifier field of the FatSecret popup window.
+5. A fatsecret page will ask you to sign in to your fatsecret account to obtain the verifier code. Use your **FatSecret username and password**. Do not use the fatsecret Platform API credentials. Once signed in, copy the code and put this code in the verifier field of the fatsecret popup window.
 
 # Services
 
@@ -50,8 +50,8 @@ See the [LICENSE](LICENSE) file for full license text.
 
 # Attribution
 
-This integration uses nutrition data provided by the FatSecret Platform API.
+This integration uses nutrition data provided by the fatsecret Platform API.
 
-Powered by FatSecret.
+Powered by fatsecret.
 
 © 2025 [@xplanes](https://github.com/xplanes)
